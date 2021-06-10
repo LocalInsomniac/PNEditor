@@ -43,8 +43,16 @@ global.clock.set_update_frequency(60);
 tabLevelInformation = new EmuTab("Level Information");
 tabLevelInformation.AddContent(
 [
-	new EmuInput(8, 8, 496, 24, "Level Name", global.levelName, "(name of the level shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
-	new EmuInput(8, 36, 496, 24, "Level Icon", global.levelIcon, "(name of the large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; })
+	new EmuInput(8, 8, 496, 24, "Level Name", global.levelName, "(level name shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
+	new EmuInput(8, 36, 496, 24, "Level Icon", global.levelIcon, "(large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; }),
+	new EmuInput(8, 60, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
+	new EmuInput(8, 88, 496, 24, "Battle Music", global.levelMusic[1], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[1] = value; }),
+	new EmuInput(8, 120, 496, 24, "Skybox Texture", global.skybox, "(material name)", 1000, E_InputTypes.STRING, function () { global.skybox = value; }),
+	new EmuColorPicker(8, 148, 496, 128, "Skybox Color", make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255), function () { global.skyboxColor = [color_get_red(value) / 255, color_get_green(value) / 255, color_get_blue(value) / 255]; }),
+	new EmuInput(8, 284, 496, 24, "Fog Start Distance", global.fogDistance[0], "", 4294967295, E_InputTypes.INT, function () { global.fogDistance[0] = value; }),
+	new EmuInput(8, 312, 496, 24, "Fog End Distance", global.fogDistance[1], "", 4294967295, E_InputTypes.INT, function () { global.fogDistance[1] = value; }),
+	new EmuColorPicker(8, 340, 496, 128, "Fog Color", make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255), function () { global.fogColor = [color_get_red(value) / 255, color_get_green(value) / 255, color_get_blue(value) / 255, global.fogColor[3]]; }),
+	new EmuInput(8, 472, 496, 24, "Fog Alpha", global.fogColor[3], "", 1000, E_InputTypes.REAL, function () { global.fogColor[3] = value; })
 ]);
 tabEvents = new EmuTab("Events");
 tabRooms = new EmuTab("Rooms");
@@ -58,7 +66,22 @@ tabPreferences.AddContent(
 		var getFile = pn_get_open_filename("Project Nightmare Level file|*.pnl", "");
 		if (getFile != "")
 		{
-			
+			pn_clear_level_information();
+			var levelCarton = carton_load(getFile, true), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
+			//Level information
+			global.levelName = buffer_read(currentLevelBuffer, buffer_string);
+			global.levelIcon = buffer_read(currentLevelBuffer, buffer_string);
+			for (var i = 0; i < 2; i++) global.levelMusic[i] = buffer_read(currentLevelBuffer, buffer_string);
+			global.skybox = buffer_read(currentLevelBuffer, buffer_string);
+			for (var i = 0; i < 3; i++) global.skyboxColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			for (var i = 0; i < 2; i++) global.fogDistance[i] = buffer_read(currentLevelBuffer, buffer_u32);
+			for (var i = 0; i < 4; i++) global.fogColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			for (var i = 0; i < 3; i++) global.lightNormal[i] = buffer_read(currentLevelBuffer, buffer_s8);
+			for (var i = 0; i < 4; i++) global.lightColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			for (var i = 0; i < 4; i++) global.lightAmbientColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			buffer_delete(currentLevelBuffer);
+			pn_clear_level_information_ui();
+			carton_destroy(levelCarton);
 		}
 	}),
 	new EmuButton(8, 80, 496, 24, "Save as...", function ()
@@ -77,6 +100,7 @@ tabPreferences.AddContent(
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.fogColor[i]);
 			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_s8, global.lightNormal[i]);
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightColor[i]);
+			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightAmbientColor[i]);
 			carton_add(levelCarton, "", currentLevelBuffer);
 			buffer_delete(currentLevelBuffer);
 			//Events
@@ -90,8 +114,7 @@ tabPreferences.AddContent(
 		if (pn_show_question("Are you sure you want to clear the current level? All unsaved progress will be lost."))
 		{
 			pn_clear_level_information();
-			objControl.tabLevelInformation._contents[| 0].SetValue("Untitled");
-			objControl.tabLevelInformation._contents[| 1].SetValue("largeicon0");
+			pn_clear_level_information_ui();
 		}
 	})
 ]);
