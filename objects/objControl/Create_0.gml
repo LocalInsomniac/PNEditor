@@ -28,7 +28,7 @@ GAME SYSTEMS
 global.levelRoom = 0;
 global.events = ds_map_create();
 global.levelData = ds_map_create();
-global.channel = [FMODGMS_Chan_CreateChannel(), FMODGMS_Chan_CreateChannel()]; //normal, battle
+global.channel = FMODGMS_Chan_CreateChannel();
 
 pn_clear_level_information();
 
@@ -61,7 +61,39 @@ tabLevelInformation.AddContent(
 	new EmuInput(8, EMU_AUTO, 496, 24, "Level Name", global.levelName, "(level name shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Level Icon", global.levelIcon, "(large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Play/Stop Music", function()
+	{
+		FMODGMS_Chan_StopChannel(global.channel);
+		if !(ds_map_exists(global.music, global.levelMusic[0]))
+		{
+			repeat (ds_map_size(global.music))
+			{
+				var track = ds_map_find_first(global.music);
+				FMODGMS_Snd_Unload(global.music[? track]);
+				ds_map_delete(global.music, track);
+			}
+			pn_music_load(global.levelMusic[0]);
+			if !(ds_map_exists(global.music, global.levelMusic[0])) pn_show_message("Play/Stop Music: Unknown track '" + global.levelMusic[0] + "'!");
+			else FMODGMS_Snd_PlaySound(global.music[? global.levelMusic[0]], global.channel);
+		}
+	}),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Battle Music", global.levelMusic[1], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[1] = value; }),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Play/Stop Battle Music", function()
+	{
+		FMODGMS_Chan_StopChannel(global.channel);
+		if !(ds_map_exists(global.music, global.levelMusic[1]))
+		{
+			repeat (ds_map_size(global.music))
+			{
+				var track = ds_map_find_first(global.music);
+				FMODGMS_Snd_Unload(global.music[? track]);
+				ds_map_delete(global.music, track);
+			}
+			pn_music_load(global.levelMusic[1]);
+			if !(ds_map_exists(global.music, global.levelMusic[1])) pn_show_message("Play/Stop Battle Music: Unknown track '" + global.levelMusic[1] + "'!");
+			else FMODGMS_Snd_PlaySound(global.music[? global.levelMusic[1]], global.channel);
+		}
+	}),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Skybox Texture", global.skybox, "(material name)", 1000, E_InputTypes.STRING, function () { global.skybox = value; }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Skybox Color", string(make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
 	{
@@ -92,18 +124,18 @@ tabLevelInformation.AddContent(
 	}),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Light Ambient Alpha", string(global.lightAmbientColor[3]), "(0.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightAmbientColor[3] = real(value); })
 ]);
-tabLevelInformation._contents[| 5].SetRealNumberBounds(0, 16777215); //Skybox Color
-tabLevelInformation._contents[| 6].SetRealNumberBounds(0, 4294967295); //Fog Start Distance
-tabLevelInformation._contents[| 7].SetRealNumberBounds(0, 4294967295); //Fog End Distance
-tabLevelInformation._contents[| 8].SetRealNumberBounds(0, 16777215); //Fog Color
-tabLevelInformation._contents[| 9].SetRealNumberBounds(0, 1); //Fog Alpha
-tabLevelInformation._contents[| 10].SetRealNumberBounds(-1, 1); //Light Normal X
-tabLevelInformation._contents[| 11].SetRealNumberBounds(-1, 1); //Light Normal Y
-tabLevelInformation._contents[| 12].SetRealNumberBounds(-1, 1); //Light Normal Z
-tabLevelInformation._contents[| 13].SetRealNumberBounds(0, 16777215); //Light Color
-tabLevelInformation._contents[| 14].SetRealNumberBounds(0, 1); //Light Alpha
-tabLevelInformation._contents[| 15].SetRealNumberBounds(0, 16777215); //Light Ambient Color
-tabLevelInformation._contents[| 16].SetRealNumberBounds(0, 1); //Light Ambient Alpha
+tabLevelInformation._contents[| 7].SetRealNumberBounds(0, 16777215); //Skybox Color
+tabLevelInformation._contents[| 8].SetRealNumberBounds(0, 4294967295); //Fog Start Distance
+tabLevelInformation._contents[| 9].SetRealNumberBounds(0, 4294967295); //Fog End Distance
+tabLevelInformation._contents[| 10].SetRealNumberBounds(0, 16777215); //Fog Color
+tabLevelInformation._contents[| 11].SetRealNumberBounds(0, 1); //Fog Alpha
+tabLevelInformation._contents[| 12].SetRealNumberBounds(-1, 1); //Light Normal X
+tabLevelInformation._contents[| 13].SetRealNumberBounds(-1, 1); //Light Normal Y
+tabLevelInformation._contents[| 14].SetRealNumberBounds(-1, 1); //Light Normal Z
+tabLevelInformation._contents[| 15].SetRealNumberBounds(0, 16777215); //Light Color
+tabLevelInformation._contents[| 16].SetRealNumberBounds(0, 1); //Light Alpha
+tabLevelInformation._contents[| 17].SetRealNumberBounds(0, 16777215); //Light Ambient Color
+tabLevelInformation._contents[| 18].SetRealNumberBounds(0, 1); //Light Ambient Alpha
 tabEvents = new EmuTab("Events");
 tabRooms = new EmuTab("Rooms");
 
@@ -178,8 +210,14 @@ tabs.AddTabs(1, [tabLevelInformation, tabEvents, tabRooms]);
 
 editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 {
+	draw_set_color(global.skyboxColor[3]);
+	draw_rectangle(0, 0, global.windowWidthPrevious - 512, global.windowHeightPrevious, false);
 	draw_set_color(c_white);
-	if (global.gridSize >= 4)
+	matrix_set(matrix_world, matrix_build(-global.cameraX, -global.cameraY, 0, 0, 0, 0, 1 + global.zoom, 1 + global.zoom, 1 + global.zoom));
+	draw_text(64, 64, "TEST");
+	draw_text(256, 256, "TEST TEST TEST TEST TEST TEST TEST TEST TEST\n TEST TEST TEST TEST TEST\nTEST\nTEST");
+	smf_matrix_reset();
+	/*if (global.gridSize >= 4)
 	{
 		gpu_set_blendmode_ext(bm_inv_dest_colour, bm_zero);
 		draw_set_alpha(0.5);
@@ -188,25 +226,29 @@ editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 		for (i = 0; i < global.windowHeightPrevious; i += global.gridSize)
         {
             var gridsX = i + pn_snap(global.cameraY, global.gridSize);
-            draw_line(global.cameraX, gridsX, global.cameraX + n, gridsX);
+            draw_line(0, gridsX, global.windowWidthPrevious, gridsX);
         }
         for (i = 0; i < n; i += global.gridSize)
         {
             var gridsY = i + pn_snap(global.cameraX, global.gridSize);
-            draw_line(gridsY, global.cameraY, gridsY, global.cameraY + global.windowHeightPrevious);
+            draw_line(gridsY, 0, gridsY, global.windowHeightPrevious);
         }
 		smf_matrix_reset();
 		draw_set_alpha(1);
 		gpu_set_blendmode(bm_normal);
-	}
+	}*/
 }, function (mx, my)
 {
-	//Move camera
-	if (mouse_check_button(mb_middle))
-    {
-        global.cameraX = global.cameraX + (global.cameraMouseX - mx) * (1 + global.zoom);
-        global.cameraY = global.cameraY + (global.cameraMouseY - my) * (1 + global.zoom);
-    }
+	//Editor area-specific controls
+	if (point_in_rectangle(window_mouse_get_x(), window_mouse_get_y(), 512, 0, global.windowWidthPrevious, global.windowHeightPrevious))
+	{
+		//Move camera
+		if (mouse_check_button(mb_middle))
+	    {
+	        global.cameraX = global.cameraX + (global.cameraMouseX - mx) * (1 + global.zoom);
+	        global.cameraY = global.cameraY + (global.cameraMouseY - my) * (1 + global.zoom);
+	    }
+	}
 	
 	//Update previous camera mouse position
 	global.cameraMouseX = mx;
