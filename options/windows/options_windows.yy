@@ -1,6 +1,6 @@
 {
   "option_windows_display_name": "PN Editor",
-  "option_windows_executable_name": "${project_name}.exe",
+  "option_windows_executable_name": "PNEditor.exe",
   "option_windows_version": "1.0.0.0",
   "option_windows_company_info": "Can't Sleep Games",
   "option_windows_product_info": "PN Editor",

@@ -52,7 +52,7 @@ function pn_clear_level_information()
 
 	//Graphics
 	global.skybox = "";
-	global.skyboxColor = [0, 0, 0];
+	global.skyboxColor = [0, 0, 0, c_black];
 	global.fogDistance = [0, 65536];
 	global.fogColor = [0, 0, 0, 1];
 	global.lightNormal = [-1, 0, -1];
@@ -67,9 +67,17 @@ function pn_clear_level_information_ui()
 	objControl.tabLevelInformation._contents[| 2].SetValue(global.levelMusic[0]);
 	objControl.tabLevelInformation._contents[| 3].SetValue(global.levelMusic[1]);
 	objControl.tabLevelInformation._contents[| 4].SetValue(global.skybox);
-	objControl.tabLevelInformation._contents[| 5].SetValue(make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255));
-	objControl.tabLevelInformation._contents[| 6].SetValue(global.fogDistance[0]);
-	objControl.tabLevelInformation._contents[| 7].SetValue(global.fogDistance[1]);
-	objControl.tabLevelInformation._contents[| 8].SetValue(make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255));
-	objControl.tabLevelInformation._contents[| 9].SetValue(global.fogColor[3]);
+	objControl.tabLevelInformation._contents[| 5].SetValue(string(make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255)));
+	objControl.tabLevelInformation._contents[| 6].SetValue(string(global.fogDistance[0]));
+	objControl.tabLevelInformation._contents[| 7].SetValue(string(global.fogDistance[1]));
+	objControl.tabLevelInformation._contents[| 8].SetValue(string(make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255)));
+	objControl.tabLevelInformation._contents[| 9].SetValue(string(global.fogColor[3]));
+	objControl.tabLevelInformation._contents[| 10].SetValue(string(global.lightNormal[0]));
+	objControl.tabLevelInformation._contents[| 11].SetValue(string(global.lightNormal[1]));
+	objControl.tabLevelInformation._contents[| 12].SetValue(string(global.lightNormal[2]));
+	objControl.tabLevelInformation._contents[| 13].SetValue(string(make_color_rgb(global.lightColor[0] * 255, global.lightColor[1] * 255, global.lightColor[2] * 255)));
+	objControl.tabLevelInformation._contents[| 14].SetValue(string(global.lightColor[3]));
+	objControl.tabLevelInformation._contents[| 15].SetValue(string(make_color_rgb(global.lightAmbientColor[0] * 255, global.lightAmbientColor[1] * 255, global.lightAmbientColor[2] * 255)));
+	objControl.tabLevelInformation._contents[| 16].SetValue(string(global.lightAmbientColor[3]));
+	global.skyboxColor[3] = make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255);
 }

@@ -16,6 +16,7 @@
     {"id":{"name":"dq_transform_vector","path":"scripts/dq_transform_vector/dq_transform_vector.yy",},"order":12,},
     {"id":{"name":"colmesh_debug_draw_region","path":"scripts/colmesh_debug_draw_region/colmesh_debug_draw_region.yy",},"order":3,},
     {"id":{"name":"iota_clock","path":"scripts/iota_clock/iota_clock.yy",},"order":1,},
+    {"id":{"name":"pn_math","path":"scripts/pn_math/pn_math.yy",},"order":14,},
     {"id":{"name":"EmuRenderSurface","path":"scripts/EmuRenderSurface/EmuRenderSurface.yy",},"order":11,},
     {"id":{"name":"EmuProgressBar","path":"scripts/EmuProgressBar/EmuProgressBar.yy",},"order":9,},
     {"id":{"name":"scribble_autotype_fade_in","path":"scripts/scribble_autotype_fade_in/scribble_autotype_fade_in.yy",},"order":1,},

@@ -32,8 +32,23 @@ global.channel = [FMODGMS_Chan_CreateChannel(), FMODGMS_Chan_CreateChannel()]; /
 
 pn_clear_level_information();
 
-windowWidthPrevious = window_get_width();
-windowHeightPrevious = window_get_height();
+global.windowWidthPrevious = window_get_width();
+global.windowHeightPrevious = window_get_height();
+
+global.cameraX = 0;
+global.cameraY = 0;
+global.cameraZ = 0;
+global.cameraYaw = 0;
+global.cameraPitch = 0;
+global.camera3D = false;
+global.cameraMouseX = 0;
+global.cameraMouseY = 0;
+global.zoom = 0;
+
+global.cursorX = 0;
+global.cursorY = 0;
+global.floorZ = 0;
+global.gridSize = 16;
 
 //Update loop
 global.busy = true;
@@ -43,17 +58,52 @@ global.clock.set_update_frequency(60);
 tabLevelInformation = new EmuTab("Level Information");
 tabLevelInformation.AddContent(
 [
-	new EmuInput(8, 8, 496, 24, "Level Name", global.levelName, "(level name shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
-	new EmuInput(8, 36, 496, 24, "Level Icon", global.levelIcon, "(large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; }),
-	new EmuInput(8, 60, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
-	new EmuInput(8, 88, 496, 24, "Battle Music", global.levelMusic[1], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[1] = value; }),
-	new EmuInput(8, 120, 496, 24, "Skybox Texture", global.skybox, "(material name)", 1000, E_InputTypes.STRING, function () { global.skybox = value; }),
-	new EmuColorPicker(8, 148, 496, 128, "Skybox Color", make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255), function () { global.skyboxColor = [color_get_red(value) / 255, color_get_green(value) / 255, color_get_blue(value) / 255]; }),
-	new EmuInput(8, 284, 496, 24, "Fog Start Distance", global.fogDistance[0], "", 4294967295, E_InputTypes.INT, function () { global.fogDistance[0] = value; }),
-	new EmuInput(8, 312, 496, 24, "Fog End Distance", global.fogDistance[1], "", 4294967295, E_InputTypes.INT, function () { global.fogDistance[1] = value; }),
-	new EmuColorPicker(8, 340, 496, 128, "Fog Color", make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255), function () { global.fogColor = [color_get_red(value) / 255, color_get_green(value) / 255, color_get_blue(value) / 255, global.fogColor[3]]; }),
-	new EmuInput(8, 472, 496, 24, "Fog Alpha", global.fogColor[3], "", 1000, E_InputTypes.REAL, function () { global.fogColor[3] = value; })
+	new EmuInput(8, EMU_AUTO, 496, 24, "Level Name", global.levelName, "(level name shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Level Icon", global.levelIcon, "(large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Battle Music", global.levelMusic[1], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[1] = value; }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Skybox Texture", global.skybox, "(material name)", 1000, E_InputTypes.STRING, function () { global.skybox = value; }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Skybox Color", string(make_color_rgb(global.skyboxColor[0] * 255, global.skyboxColor[1] * 255, global.skyboxColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
+	{
+		var color = real(value);
+		global.skyboxColor = [color_get_red(color) / 255, color_get_green(color) / 255, color_get_blue(color) / 255, color];
+	}),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Start Distance", string(global.fogDistance[0]), "", 10, E_InputTypes.INT, function () { global.fogDistance[0] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog End Distance", string(global.fogDistance[1]), "", 10, E_InputTypes.INT, function () { global.fogDistance[1] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Color", string(make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
+	{
+		var color = real(value);
+		global.fogColor = [color_get_red(color) / 255, color_get_green(color) / 255, color_get_blue(color) / 255, global.fogColor[3]];
+	}),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Alpha", string(global.fogColor[3]), "(0.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.fogColor[3] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Normal X", string(global.lightNormal[0]), "(-1.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightNormal[0] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Normal Y", string(global.lightNormal[1]), "(-1.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightNormal[1] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Normal Z", string(global.lightNormal[2]), "(-1.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightNormal[2] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Color", string(make_color_rgb(global.lightColor[0] * 255, global.lightColor[1] * 255, global.lightColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
+	{
+		var color = real(value);
+		global.lightColor = [color_get_red(color) / 255, color_get_green(color) / 255, color_get_blue(color) / 255, global.lightColor[3]];
+	}),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Alpha", string(global.lightColor[3]), "(0.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightColor[3] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Ambient Color", string(make_color_rgb(global.lightAmbientColor[0] * 255, global.lightAmbientColor[1] * 255, global.lightAmbientColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
+	{
+		var color = real(value);
+		global.lightAmbientColor = [color_get_red(color) / 255, color_get_green(color) / 255, color_get_blue(color) / 255, global.lightAmbientColor[3]];
+	}),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Light Ambient Alpha", string(global.lightAmbientColor[3]), "(0.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightAmbientColor[3] = real(value); })
 ]);
+tabLevelInformation._contents[| 5].SetRealNumberBounds(0, 16777215); //Skybox Color
+tabLevelInformation._contents[| 6].SetRealNumberBounds(0, 4294967295); //Fog Start Distance
+tabLevelInformation._contents[| 7].SetRealNumberBounds(0, 4294967295); //Fog End Distance
+tabLevelInformation._contents[| 8].SetRealNumberBounds(0, 16777215); //Fog Color
+tabLevelInformation._contents[| 9].SetRealNumberBounds(0, 1); //Fog Alpha
+tabLevelInformation._contents[| 10].SetRealNumberBounds(-1, 1); //Light Normal X
+tabLevelInformation._contents[| 11].SetRealNumberBounds(-1, 1); //Light Normal Y
+tabLevelInformation._contents[| 12].SetRealNumberBounds(-1, 1); //Light Normal Z
+tabLevelInformation._contents[| 13].SetRealNumberBounds(0, 16777215); //Light Color
+tabLevelInformation._contents[| 14].SetRealNumberBounds(0, 1); //Light Alpha
+tabLevelInformation._contents[| 15].SetRealNumberBounds(0, 16777215); //Light Ambient Color
+tabLevelInformation._contents[| 16].SetRealNumberBounds(0, 1); //Light Ambient Alpha
 tabEvents = new EmuTab("Events");
 tabRooms = new EmuTab("Rooms");
 
@@ -116,26 +166,60 @@ tabPreferences.AddContent(
 			pn_clear_level_information();
 			pn_clear_level_information_ui();
 		}
-	})
+	}),
+	new EmuCheckbox(8, 136, 496, 24, "3D Mode", global.camera3D, function () { global.camera3D = value; }),
+	new EmuInput(8, 164, 496, 24, "Grid Size", string(global.gridSize), "", 10, E_InputTypes.REAL, function () { global.gridSize = real(value); })
 ]);
+tabPreferences._contents[| 5].SetRealNumberBounds(0.00000001, 4294967295); //Grid Size
 
-tabs = new EmuTabGroup(0, 0, 512, 540, 2, 24);
+tabs = new EmuTabGroup(0, 0, 512, 720, 2, 24);
 tabs.AddTabs(0, tabPreferences);
 tabs.AddTabs(1, [tabLevelInformation, tabEvents, tabRooms]);
 
-editor = new EmuRenderSurface(512, 0, 720, 540, function (mx, my)
+editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 {
 	draw_set_color(c_white);
-	draw_text(mx, my, ":badklass:");
-}, function (mx, my) {}, function () {}, function () {});
+	if (global.gridSize >= 4)
+	{
+		gpu_set_blendmode_ext(bm_inv_dest_colour, bm_zero);
+		draw_set_alpha(0.5);
+		matrix_set(matrix_world, matrix_build(0, 0, global.floorZ, 0, 0, 0, 1, 1, 1));
+		var n = global.windowWidthPrevious - 512;
+		for (i = 0; i < global.windowHeightPrevious; i += global.gridSize)
+        {
+            var gridsX = i + pn_snap(global.cameraY, global.gridSize);
+            draw_line(global.cameraX, gridsX, global.cameraX + n, gridsX);
+        }
+        for (i = 0; i < n; i += global.gridSize)
+        {
+            var gridsY = i + pn_snap(global.cameraX, global.gridSize);
+            draw_line(gridsY, global.cameraY, gridsY, global.cameraY + global.windowHeightPrevious);
+        }
+		smf_matrix_reset();
+		draw_set_alpha(1);
+		gpu_set_blendmode(bm_normal);
+	}
+}, function (mx, my)
+{
+	//Move camera
+	if (mouse_check_button(mb_middle))
+    {
+        global.cameraX = global.cameraX + (global.cameraMouseX - mx) * (1 + global.zoom);
+        global.cameraY = global.cameraY + (global.cameraMouseY - my) * (1 + global.zoom);
+    }
+	
+	//Update previous camera mouse position
+	global.cameraMouseX = mx;
+	global.cameraMouseY = my;
+}, function () {}, function () {});
 
-global.ui = new EmuCore(0, 0, 512, 540);
+global.ui = new EmuCore(0, 0, 512, 720);
 global.ui.AddContent([tabs, editor]);
 
 global.clock.add_cycle_method(function ()
 {
 	var windowWidth = window_get_width(), windowHeight = window_get_height();
-	if (windowWidth != windowWidthPrevious || windowHeight != windowHeightPrevious)
+	if (windowWidth != global.windowWidthPrevious || windowHeight != global.windowHeightPrevious)
 	{
 		camera_set_view_size(view_camera[0], windowWidth, windowHeight);
 		surface_resize(application_surface, windowWidth, windowHeight);
@@ -143,7 +227,7 @@ global.clock.add_cycle_method(function ()
 		tabs.height = windowHeight;
 		editor.width = windowWidth - 512;
 		editor.height = windowHeight;
-		windowWidthPrevious = windowWidth;
-		windowHeightPrevious = windowHeight;
+		global.windowWidthPrevious = windowWidth;
+		global.windowHeightPrevious = windowHeight;
 	}
 });
