@@ -26,8 +26,12 @@ GAME SYSTEMS
 ----------*/
 
 global.levelRoom = 0;
+global.levelEvent = 0;
+global.levelEventList = ds_list_create();
 global.events = ds_map_create();
+global.eventsList = ds_list_create();
 global.levelData = ds_map_create();
+global.levelDataList = ds_list_create();
 global.channel = FMODGMS_Chan_CreateChannel();
 
 pn_clear_level_information();
@@ -43,12 +47,15 @@ global.cameraPitch = 0;
 global.camera3D = false;
 global.cameraMouseX = 0;
 global.cameraMouseY = 0;
-global.zoom = 0;
+global.zoom = 1;
 
 global.cursorX = 0;
 global.cursorY = 0;
 global.floorZ = 0;
 global.gridSize = 16;
+
+global.eventEditor = false;
+global.eventSelected = -1;
 
 //Update loop
 global.busy = true;
@@ -56,8 +63,7 @@ global.clock = new iota_clock();
 global.clock.set_update_frequency(60);
 
 tabLevelInformation = new EmuTab("Level Information");
-tabLevelInformation.AddContent(
-[
+tabLevelInformation.AddContent([
 	new EmuInput(8, EMU_AUTO, 496, 24, "Level Name", global.levelName, "(level name shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelName = value; }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Level Icon", global.levelIcon, "(large icon shown by RPC)", 1000, E_InputTypes.STRING, function () { global.levelIcon = value; }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
@@ -136,7 +142,47 @@ tabLevelInformation._contents[| 15].SetRealNumberBounds(0, 16777215); //Light Co
 tabLevelInformation._contents[| 16].SetRealNumberBounds(0, 1); //Light Alpha
 tabLevelInformation._contents[| 17].SetRealNumberBounds(0, 16777215); //Light Ambient Color
 tabLevelInformation._contents[| 18].SetRealNumberBounds(0, 1); //Light Ambient Alpha
+
 tabEvents = new EmuTab("Events");
+global.tabEventsList = new EmuList(8, EMU_AUTO, 496, 24, "Events:", 32, 8, function ()
+{
+	var selection = GetSelection();
+	if (selection > -1) global.levelEvent = selection;
+});
+global.tabEventsList.SetList(global.eventsList);
+tabEvents.AddContent([
+	global.tabEventsList,
+	new EmuButton(8, EMU_AUTO, 496, 24, "Edit Selected Event...", function ()
+	{
+		if (!ds_map_empty(global.events) && ds_map_exists(global.events, global.levelEvent))
+		{
+			pn_reset_current_event_list();
+			global.eventEditor = true;
+		}
+		else pn_show_message("Edit Selected Event...: Select an event first!");
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Add Event...", function ()
+	{
+		var getID = pn_get_integer("Add Event...: Event ID:", global.levelEvent);
+		if (ds_map_exists(global.events, getID)) pn_show_message("Add Event...: Event " + string(getID) + " already exists!");
+		else
+		{
+			var newEvent = ds_list_create();
+			ds_list_add(newEvent, false, false); //trigger on level start, persistent
+			ds_map_add_list(global.events, getID, newEvent);
+			pn_reset_events_list();
+			global.levelEvent = getID;
+		}
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Event", function ()
+	{
+		var selection = global.tabEventsList.GetSelection();
+		if (selection > -1) ds_map_delete(global.events, global.eventsList[| selection]);
+		pn_reset_events_list();
+		global.levelEvent = global.tabEventsList.GetSelection();
+	})
+]);
+
 tabRooms = new EmuTab("Rooms");
 
 tabPreferences = new EmuTab("Preferences");
@@ -149,7 +195,9 @@ tabPreferences.AddContent(
 		if (getFile != "")
 		{
 			pn_clear_level_information();
+			
 			var levelCarton = carton_load(getFile, true), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
+			
 			//Level information
 			global.levelName = buffer_read(currentLevelBuffer, buffer_string);
 			global.levelIcon = buffer_read(currentLevelBuffer, buffer_string);
@@ -161,6 +209,24 @@ tabPreferences.AddContent(
 			for (var i = 0; i < 3; i++) global.lightNormal[i] = buffer_read(currentLevelBuffer, buffer_s8);
 			for (var i = 0; i < 4; i++) global.lightColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
 			for (var i = 0; i < 4; i++) global.lightAmbientColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			
+			//Events
+			for (var i = 1, n = buffer_read(currentLevelBuffer, buffer_u16) + 1; i < n; i++)
+			{
+				ds_map_add_list(global.events, carton_get_metadata(levelCarton, i), ds_list_create());
+				currentLevelBuffer = carton_get_buffer(levelCarton, i);
+				buffer_delete(currentLevelBuffer);
+			}
+			pn_reset_events_list();
+			
+			//Rooms
+			for (var i = n, n = n + buffer_read(currentLevelBuffer, buffer_u16); i < n; i++)
+			{
+				currentLevelBuffer = carton_get_buffer(levelCarton, i);
+				buffer_delete(currentLevelBuffer);
+			}
+			//pn_reset_rooms_list();
+			
 			buffer_delete(currentLevelBuffer);
 			pn_clear_level_information_ui();
 			carton_destroy(levelCarton);
@@ -172,6 +238,7 @@ tabPreferences.AddContent(
 		if (getFile != "")
 		{
 			var levelCarton = carton_create(), currentLevelBuffer = buffer_create(1, buffer_grow, 1);
+			
 			//Level information
 			buffer_write(currentLevelBuffer, buffer_string, global.levelName);
 			buffer_write(currentLevelBuffer, buffer_string, global.levelIcon);
@@ -183,10 +250,21 @@ tabPreferences.AddContent(
 			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_s8, global.lightNormal[i]);
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightColor[i]);
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightAmbientColor[i]);
+			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.events)); //Event amount
+			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.levelData)); //Room amount
 			carton_add(levelCarton, "", currentLevelBuffer);
 			buffer_delete(currentLevelBuffer);
+			
 			//Events
+			for (var key = ds_map_find_first(global.events); !is_undefined(key); key = ds_map_find_next(global.events, key))
+			{
+				currentLevelBuffer = buffer_create(1, buffer_grow, 1);
+				carton_add(levelCarton, key, currentLevelBuffer);
+				buffer_delete(currentLevelBuffer);
+			}
+			
 			//Rooms
+			
 			carton_save(levelCarton, getFile, true);
 			carton_destroy(levelCarton);
 		}
@@ -202,7 +280,7 @@ tabPreferences.AddContent(
 	new EmuCheckbox(8, 136, 496, 24, "3D Mode", global.camera3D, function () { global.camera3D = value; }),
 	new EmuInput(8, 164, 496, 24, "Grid Size", string(global.gridSize), "", 10, E_InputTypes.REAL, function () { global.gridSize = real(value); })
 ]);
-tabPreferences._contents[| 5].SetRealNumberBounds(0.00000001, 4294967295); //Grid Size
+tabPreferences._contents[| 5].SetRealNumberBounds(1, 4294967295); //Grid Size
 
 tabs = new EmuTabGroup(0, 0, 512, 720, 2, 24);
 tabs.AddTabs(0, tabPreferences);
@@ -213,41 +291,40 @@ editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 	draw_set_color(global.skyboxColor[3]);
 	draw_rectangle(0, 0, global.windowWidthPrevious - 512, global.windowHeightPrevious, false);
 	draw_set_color(c_white);
-	matrix_set(matrix_world, matrix_build(-global.cameraX, -global.cameraY, 0, 0, 0, 0, 1 + global.zoom, 1 + global.zoom, 1 + global.zoom));
+	
+	matrix_set(matrix_world, matrix_build(-global.cameraX, -global.cameraY, 0, 0, 0, 0, global.zoom, global.zoom, global.zoom));
 	draw_text(64, 64, "TEST");
 	draw_text(256, 256, "TEST TEST TEST TEST TEST TEST TEST TEST TEST\n TEST TEST TEST TEST TEST\nTEST\nTEST");
+	draw_set_alpha(0.5);
+	draw_rectangle(global.cursorX - 2, global.cursorY - 2, global.cursorX + 2, global.cursorY + 2, false);
+	draw_set_alpha(1);
 	smf_matrix_reset();
-	/*if (global.gridSize >= 4)
-	{
-		gpu_set_blendmode_ext(bm_inv_dest_colour, bm_zero);
-		draw_set_alpha(0.5);
-		matrix_set(matrix_world, matrix_build(0, 0, global.floorZ, 0, 0, 0, 1, 1, 1));
-		var n = global.windowWidthPrevious - 512;
-		for (i = 0; i < global.windowHeightPrevious; i += global.gridSize)
-        {
-            var gridsX = i + pn_snap(global.cameraY, global.gridSize);
-            draw_line(0, gridsX, global.windowWidthPrevious, gridsX);
-        }
-        for (i = 0; i < n; i += global.gridSize)
-        {
-            var gridsY = i + pn_snap(global.cameraX, global.gridSize);
-            draw_line(gridsY, 0, gridsY, global.windowHeightPrevious);
-        }
-		smf_matrix_reset();
-		draw_set_alpha(1);
-		gpu_set_blendmode(bm_normal);
-	}*/
 }, function (mx, my)
 {
 	//Editor area-specific controls
-	if (point_in_rectangle(window_mouse_get_x(), window_mouse_get_y(), 512, 0, global.windowWidthPrevious, global.windowHeightPrevious))
+	if !(point_in_rectangle(window_mouse_get_x(), window_mouse_get_y(), 0, 0, 512, global.windowHeightPrevious))
 	{
 		//Move camera
 		if (mouse_check_button(mb_middle))
 	    {
-	        global.cameraX = global.cameraX + (global.cameraMouseX - mx) * (1 + global.zoom);
-	        global.cameraY = global.cameraY + (global.cameraMouseY - my) * (1 + global.zoom);
+	        global.cameraX = global.cameraX + (global.cameraMouseX - mx) //* global.zoom;
+	        global.cameraY = global.cameraY + (global.cameraMouseY - my) //* global.zoom;
 	    }
+		
+		global.zoom = max(0.1, global.zoom + (mouse_wheel_up() - mouse_wheel_down()) * 0.1);
+		
+		//Reset camera
+		if (keyboard_check_pressed(ord("R")))
+		{
+			global.cameraX = 0;
+			global.cameraY = 0;
+			global.zoom = 1;
+		}
+		
+		//Move cursor
+		var cx = (global.cameraX + mx) / global.zoom, cy = (global.cameraY + my) / global.zoom;
+		global.cursorX = pn_snap_round(cx, global.gridSize);
+		global.cursorY = pn_snap_round(cy, global.gridSize);
 	}
 	
 	//Update previous camera mouse position
@@ -257,6 +334,75 @@ editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 
 global.ui = new EmuCore(0, 0, 512, 720);
 global.ui.AddContent([tabs, editor]);
+
+global.eventUIList = new EmuList(8, EMU_AUTO, 496, 24, "Actions: ", 32, 8, function ()
+{
+	var selection = GetSelection();
+	if (global.eventSelected == selection) pn_event_edit_action(global.events[? global.levelEvent][| global.eventSelected + 2]);
+	global.eventSelected = selection;
+});
+global.eventUIList.SetList(global.levelEventList);
+
+global.eventUI = new EmuCore(0, 0, 512, 720);
+global.eventUI.AddContent(
+[
+	global.eventUIList,
+	new EmuText(8, EMU_AUTO, 496, 24, "Double click an action to edit it."),
+	new EmuButton(8, EMU_AUTO, 244, 24, "Move Up", function ()
+	{
+	}),
+	new EmuButton(248, EMU_AUTO, 244, 24, "Move Down", function ()
+	{
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Add Action...", function ()
+	{
+		var currentEvent = global.events[? global.levelEvent], getAction = pn_get_integer("Add Action...: Action ID...", ds_list_empty(currentEvent) ? 0 : currentEvent[| ds_list_size(currentEvent) - 1]), addAction;
+		switch (getAction)
+		{
+			case (eEventAction.wait):
+			case (eEventAction.setRoom):
+			case (eEventAction.gotoLevel):
+			case (eEventAction.lockPlayer):
+			case (eEventAction.lockCamera): 
+			case (eEventAction.setCameraRoll): 
+			case (eEventAction.setCameraFOV): 
+			case (eEventAction.setCameraTarget): addAction = [getAction, 0]; break
+			
+			case (eEventAction.triggerEvent):
+			case (eEventAction.pauseEvent):
+			case (eEventAction.resumeEvent):
+			case (eEventAction.stopEvent): addAction = [getAction, global.levelEvent]; break
+			
+			case (eEventAction.setSkyboxTexture): addAction = [getAction, global.skybox]; break
+			
+			case (eEventAction.fadeSkyboxColor): addAction = [getAction, global.skyboxColor[3], 0]; break
+			
+			case (eEventAction.fadeFog): addAction = [getAction, global.fogDistance[0], global.fogDistance[1], global.fogColor[4], global.fogColor[3], 0]; break
+			
+			case (eEventAction.fadeLight): addAction = [getAction, global.lightNormal[0], global.lightNormal[1], global.lightNormal[2], global.lightColor[4], global.lightColor[3], global.lightAmbientColor[4], global.lightAmbientColor[3], 0]; break
+			
+			case (eEventAction._message): addAction = [getAction, ""]; break
+			
+			case (eEventAction.lockCameraToActor): 
+			case (eEventAction.lerpCamera): addAction = [getAction, 0, 0]; break
+			
+			case (eEventAction.lockCameraToPosition): addAction = [getAction, global.cameraMouseX, global.cameraMouseY, global.cameraZ, 0]; break
+			
+			case (eEventAction.setCameraPosition): addAction = [getAction, global.cameraMouseX, global.cameraMouseY, global.cameraZ];
+			
+			default: addAction = getAction;
+		}
+		pn_event_edit_action(addAction);
+		ds_list_add(currentEvent, addAction);
+		pn_reset_current_event_list();
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Action...", function ()
+	{
+		if (global.eventSelected != -1) ds_list_delete(global.events[? global.levelEvent], global.eventSelected + 2);
+		pn_reset_current_event_list();
+	}),
+	editor
+]);
 
 global.clock.add_cycle_method(function ()
 {

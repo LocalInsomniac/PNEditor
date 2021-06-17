@@ -1,0 +1,48 @@
+TIME
+====
+
+0 - Wait _ tick(s)
+1 - Wait until message box closes
+2 - Wait until player leaves trigger area
+
+LEVEL
+=====
+
+3 - Set current room to _
+9 - Go to level _
+
+ATMOSPHERE
+==========
+
+4 - Set skybox texture to _
+5 - Fade skybox BGR color to _ in _ tick(s)
+6 - Fade fog to start _, end _, BGR color _, alpha _ in _ tick(s)
+7 - Fade light to X normal _, Y normal _, Z normal _, BGR color _, alpha _, BGR ambient color _, ambient alpha _, in _ tick(s)
+
+EVENT
+=====
+
+8 - Trigger event _
+12 - Pause event _/all events/all level events/all non-level events
+13 - Resume event _/all events/all level events/all non-level events
+14 - Stop event _/all events/all level events/all non-level events
+
+CAMERA
+======
+
+15 - Restore camera settings
+16 - Lock/Unlock camera position
+17 - Lock camera towards actor _ instantly/smoothly
+18 - Lock camera towards position X _, Y _, Z _ instantly/smoothly
+19 - Unlock camera direction
+20 - Set camera position to X _, Y _, Z _
+21 - Set camera roll to _ degrees
+22 - Set camera FOV to _ degrees
+23 - Set camera target to actor _
+24 - Lerp camera from previous position linearly/smoothly in _ tick(s)
+
+MISCELLANEOUS
+=============
+
+10 - Message "_"
+11 - Lock/Unlock player
