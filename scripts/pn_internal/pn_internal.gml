@@ -264,4 +264,5 @@ function pn_event_edit_action(_action)
 			_action[2] = pn_get_integer("24 - Lock camera towards position: Ticks?", _action[2]);
 		break
 	}
+	pn_reset_current_event_list();
 }

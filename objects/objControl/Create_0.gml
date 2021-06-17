@@ -338,7 +338,7 @@ global.ui.AddContent([tabs, editor]);
 global.eventUIList = new EmuList(8, EMU_AUTO, 496, 24, "Actions: ", 32, 8, function ()
 {
 	var selection = GetSelection();
-	if (global.eventSelected == selection) pn_event_edit_action(global.events[? global.levelEvent][| global.eventSelected + 2]);
+	if (selection > -1 && global.eventSelected == selection) pn_event_edit_action(global.events[? global.levelEvent][| global.eventSelected + 2]);
 	global.eventSelected = selection;
 });
 global.eventUIList.SetList(global.levelEventList);
@@ -351,12 +351,12 @@ global.eventUI.AddContent(
 	new EmuButton(8, EMU_AUTO, 244, 24, "Move Up", function ()
 	{
 	}),
-	new EmuButton(248, EMU_AUTO, 244, 24, "Move Down", function ()
+	new EmuButton(256, EMU_AUTO, 244, 24, "Move Down", function ()
 	{
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Add Action...", function ()
 	{
-		var currentEvent = global.events[? global.levelEvent], getAction = pn_get_integer("Add Action...: Action ID...", ds_list_empty(currentEvent) ? 0 : currentEvent[| ds_list_size(currentEvent) - 1]), addAction;
+		var currentEvent = global.events[? global.levelEvent], getAction = pn_get_integer("Add Action...: Action ID...", ds_list_empty(currentEvent) ? 0 : (is_array(currentEvent[| ds_list_size(currentEvent) - 1]) ? currentEvent[| ds_list_size(currentEvent) - 1][0] : currentEvent[| ds_list_size(currentEvent) - 1])), addAction;
 		switch (getAction)
 		{
 			case (eEventAction.wait):
@@ -392,9 +392,8 @@ global.eventUI.AddContent(
 			
 			default: addAction = getAction;
 		}
-		pn_event_edit_action(addAction);
 		ds_list_add(currentEvent, addAction);
-		pn_reset_current_event_list();
+		pn_event_edit_action(addAction);
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Action...", function ()
 	{
