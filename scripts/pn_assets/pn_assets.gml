@@ -62,7 +62,7 @@ function pn_sprite_queue(_name)
 				dataTable = file_text_open_read(mDirSprites + _name + "/model.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (real(data[0]) == 0)
 					{
 						var _getSubmodel = smf_model_load(mDirSprites + _name + "/" + data[1] + ".smf"), i = 0;
@@ -96,7 +96,7 @@ function pn_sprite_queue(_name)
 				dataTable = file_text_open_read(mDirSprites + _name + "/model.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (real(data[0]) == 1)
 					{
 						if (is_undefined(_bodygroups)) _bodygroups = [];
@@ -126,7 +126,7 @@ function pn_sprite_queue(_name)
 				dataTable = file_text_open_read(mDirSprites + _name + "/model.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (real(data[0]) == 2)
 					{
 						_type = eModelType.animated;
@@ -161,7 +161,7 @@ function pn_sprite_queue(_name)
 				dataTable = file_text_open_read(mDirSprites + "sprites.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (data[0] == _name)
 					{
 						_frames = real(data[1]);
@@ -240,7 +240,7 @@ function pn_material_queue(_name)
 				dataTable = file_text_open_read(mDirMaterials + "materials.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (data[0] == _name)
 					{
 						_frames = real(data[1]);
@@ -317,7 +317,7 @@ function pn_font_queue(_name)
 				dataTable = file_text_open_read(mDirFonts + "fonts.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (data[0] == _name)
 					{
 						_size = real(data[1]);
@@ -346,7 +346,7 @@ function pn_font_queue(_name)
 				dataTable = file_text_open_read(mDirFonts + "fonts.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (data[0] == _name)
 					{
 						_frames = real(data[1]);
@@ -410,7 +410,7 @@ function pn_sound_load(_name)
 		dataTable = file_text_open_read(mDirSounds + "sounds.txt");
 		while !(file_text_eof(dataTable))
 		{
-			var data = string_parse(file_text_read_string(dataTable));
+			var data = string_parse(file_text_read_string(dataTable), false);
 			if (data[0] == _name)
 			{
 				_falloff = real(data[1]);
@@ -488,7 +488,7 @@ function pn_music_load(_name)
 				dataTable = file_text_open_read(mDirMusic + "music.txt");
 				while !(file_text_eof(dataTable))
 				{
-					var data = string_parse(file_text_read_string(dataTable));
+					var data = string_parse(file_text_read_string(dataTable), false);
 					if (data[0] == _name)
 					{
 						var _start = real(data[1]);

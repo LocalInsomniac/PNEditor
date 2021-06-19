@@ -55,7 +55,7 @@ global.floorZ = 0;
 global.gridSize = 16;
 
 global.eventEditor = false;
-global.eventSelected = -1;
+global.eventSelected = -65536;
 
 //Update loop
 global.busy = true;
@@ -147,7 +147,7 @@ tabEvents = new EmuTab("Events");
 global.tabEventsList = new EmuList(8, EMU_AUTO, 496, 24, "Events:", 32, 8, function ()
 {
 	var selection = GetSelection();
-	if (selection > -1) global.levelEvent = selection;
+	if (selection > -1) global.levelEvent = global.eventsList[| selection];
 });
 global.tabEventsList.SetList(global.eventsList);
 tabEvents.AddContent([
@@ -240,8 +240,6 @@ tabPreferences.AddContent(
 			var levelCarton = carton_create(), currentLevelBuffer = buffer_create(1, buffer_grow, 1);
 			
 			//Level information
-			buffer_write(currentLevelBuffer, buffer_string, global.levelName);
-			buffer_write(currentLevelBuffer, buffer_string, global.levelIcon);
 			for (var i = 0; i < 2; i++) buffer_write(currentLevelBuffer, buffer_string, global.levelMusic[i]);
 			buffer_write(currentLevelBuffer, buffer_string, global.skybox);
 			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_u8, global.skyboxColor[i]);
@@ -259,6 +257,29 @@ tabPreferences.AddContent(
 			for (var key = ds_map_find_first(global.events); !is_undefined(key); key = ds_map_find_next(global.events, key))
 			{
 				currentLevelBuffer = buffer_create(1, buffer_grow, 1);
+				
+				var event = global.events[? key], eventString = string(event[| 0]) + "|" + string(event[| 1]) + "|" + string(ds_list_size(event) - 2);
+				if (ds_list_size(event)) eventString += "|";
+				for (var i = 2; i < ds_list_size(event); i++)
+				{
+					var action = event[| i];
+					if (is_array(action))
+					{
+						var n = array_length(action);
+						eventString += string(n) + "|";
+						for (var j = 0; j < n; j++)
+						{
+							var arg = action[j];
+							if (is_string(arg)) eventString += "¤";
+							eventString += string(arg);
+							if (j < n - 1) eventString += "|";
+						}
+					}
+					else eventString += string(action);
+					if (i < ds_list_size(event) - 1) eventString += "|";
+				}
+				buffer_write(currentLevelBuffer, buffer_string, eventString);
+				
 				carton_add(levelCarton, key, currentLevelBuffer);
 				buffer_delete(currentLevelBuffer);
 			}
@@ -338,7 +359,7 @@ global.ui.AddContent([tabs, editor]);
 global.eventUIList = new EmuList(8, EMU_AUTO, 496, 24, "Actions: ", 32, 8, function ()
 {
 	var selection = GetSelection();
-	if (selection > -1 && global.eventSelected == selection) pn_event_edit_action(global.events[? global.levelEvent][| global.eventSelected + 2]);
+	if (selection > -1 && mouse_check_button_pressed(mb_right)) pn_event_edit_action(selection + 2);
 	global.eventSelected = selection;
 });
 global.eventUIList.SetList(global.levelEventList);
@@ -347,11 +368,11 @@ global.eventUI = new EmuCore(0, 0, 512, 720);
 global.eventUI.AddContent(
 [
 	global.eventUIList,
-	new EmuText(8, EMU_AUTO, 496, 24, "Double click an action to edit it."),
+	new EmuText(8, EMU_AUTO, 496, 24, "Right click an action to edit it."),
 	new EmuButton(8, EMU_AUTO, 244, 24, "Move Up", function ()
 	{
 	}),
-	new EmuButton(256, EMU_AUTO, 244, 24, "Move Down", function ()
+	new EmuButton(258, EMU_AUTO, 244, 24, "Move Down", function ()
 	{
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Add Action...", function ()
@@ -377,9 +398,9 @@ global.eventUI.AddContent(
 			
 			case (eEventAction.fadeSkyboxColor): addAction = [getAction, global.skyboxColor[3], 0]; break
 			
-			case (eEventAction.fadeFog): addAction = [getAction, global.fogDistance[0], global.fogDistance[1], global.fogColor[4], global.fogColor[3], 0]; break
+			case (eEventAction.fadeFog): addAction = [getAction, global.fogDistance[0], global.fogDistance[1], make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255), global.fogColor[3], 0]; break
 			
-			case (eEventAction.fadeLight): addAction = [getAction, global.lightNormal[0], global.lightNormal[1], global.lightNormal[2], global.lightColor[4], global.lightColor[3], global.lightAmbientColor[4], global.lightAmbientColor[3], 0]; break
+			case (eEventAction.fadeLight): addAction = [getAction, global.lightNormal[0], global.lightNormal[1], global.lightNormal[2], make_color_rgb(global.lightColor[0] * 255, global.lightColor[1] * 255, global.lightColor[2] * 255), global.lightColor[3], make_color_rgb(global.lightAmbientColor[0] * 255, global.lightAmbientColor[1] * 255, global.lightAmbientColor[2] * 255), global.lightAmbientColor[3], 0]; break
 			
 			case (eEventAction._message): addAction = [getAction, ""]; break
 			
@@ -393,13 +414,14 @@ global.eventUI.AddContent(
 			default: addAction = getAction;
 		}
 		ds_list_add(currentEvent, addAction);
-		pn_event_edit_action(addAction);
+		pn_event_edit_action(ds_list_size(currentEvent) - 1);
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Action...", function ()
 	{
-		if (global.eventSelected != -1) ds_list_delete(global.events[? global.levelEvent], global.eventSelected + 2);
+		if (global.eventSelected > -1) ds_list_delete(global.events[? global.levelEvent], global.eventSelected + 2);
 		pn_reset_current_event_list();
 	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Done", function () { global.eventEditor = false; }),
 	editor
 ]);
 
@@ -408,6 +430,7 @@ global.clock.add_cycle_method(function ()
 	var windowWidth = window_get_width(), windowHeight = window_get_height();
 	if (windowWidth != global.windowWidthPrevious || windowHeight != global.windowHeightPrevious)
 	{
+		show_debug_message(string(windowWidth) + ", " + string(windowHeight));
 		camera_set_view_size(view_camera[0], windowWidth, windowHeight);
 		surface_resize(application_surface, windowWidth, windowHeight);
 		global.ui.height = windowHeight;

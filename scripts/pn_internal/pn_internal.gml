@@ -205,8 +205,9 @@ function pn_reset_current_event_list()
 	}
 }
 
-function pn_event_edit_action(_action)
+function pn_event_edit_action(_pos)
 {
+	var _action = global.events[? global.levelEvent][| _pos];
 	if (is_array(_action)) switch (_action[0])
 	{
 		case (eEventAction.wait): _action[1] = pn_get_integer("1 - Wait: Ticks?", _action[1]); break
@@ -264,5 +265,17 @@ function pn_event_edit_action(_action)
 			_action[2] = pn_get_integer("24 - Lock camera towards position: Ticks?", _action[2]);
 		break
 	}
+	global.events[? global.levelEvent][| _pos] = _action;
 	pn_reset_current_event_list();
+}
+
+function pn_list()
+{
+	var list = ds_list_create(), i = 0;
+	repeat (argument_count)
+	{
+		ds_list_add(list, argument[i]);
+		i++;
+	}
+	return (list)
 }
