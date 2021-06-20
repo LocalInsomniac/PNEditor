@@ -196,7 +196,7 @@ tabPreferences.AddContent(
 		{
 			pn_clear_level_information();
 			
-			var levelCarton = carton_load(getFile, true), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
+			var levelCarton = carton_load(getFile, false), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
 			
 			//Level information
 			global.levelName = buffer_read(currentLevelBuffer, buffer_string);
@@ -210,22 +210,50 @@ tabPreferences.AddContent(
 			for (var i = 0; i < 4; i++) global.lightColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
 			for (var i = 0; i < 4; i++) global.lightAmbientColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
 			
+			var events = buffer_read(currentLevelBuffer, buffer_u16), rooms = buffer_read(currentLevelBuffer, buffer_u16);
+			
 			//Events
-			for (var i = 1, n = buffer_read(currentLevelBuffer, buffer_u16) + 1; i < n; i++)
+			show_debug_message(string(events) + " events found");
+			for (var i = 1, n = events + 1; i < n; i++)
 			{
-				ds_map_add_list(global.events, carton_get_metadata(levelCarton, i), ds_list_create());
+				var loadEvent = ds_list_create(), eventData, j = 3;
+				
 				currentLevelBuffer = carton_get_buffer(levelCarton, i);
+				eventData = string_parse(buffer_read(currentLevelBuffer, buffer_string), true);
 				buffer_delete(currentLevelBuffer);
+				
+				ds_list_add(loadEvent, eventData[0], eventData[1]); //Trigger on start, persistent
+				
+				repeat (eventData[2])
+				{
+					var eventAction, eventArgs = eventData[j];
+					j++;
+					if (eventData[j] == 1) eventAction = eventData[j]; //Action has no arguments, therefore a real
+					else //Action has 1+ argument(s), therefore an array
+					{
+						eventAction = [];
+						repeat (eventArgs)
+						{
+							eventAction[@ array_length(eventAction)] = eventData[j];
+							j++;
+						}
+					}
+					ds_list_add(loadEvent, eventAction);
+				}
+				
+				var eventID = carton_get_metadata(levelCarton, i);
+				show_debug_message(string(i) + "/" + string(n) + ", ID " + eventID + ", " + string(eventData[2]) + " actions");
+				ds_map_add_list(global.events, real(eventID), loadEvent);
 			}
 			pn_reset_events_list();
 			
 			//Rooms
-			for (var i = n, n = n + buffer_read(currentLevelBuffer, buffer_u16); i < n; i++)
+			/*for (var i = n, n = n + rooms; i < n; i++)
 			{
 				currentLevelBuffer = carton_get_buffer(levelCarton, i);
 				buffer_delete(currentLevelBuffer);
 			}
-			//pn_reset_rooms_list();
+			pn_reset_rooms_list();*/
 			
 			buffer_delete(currentLevelBuffer);
 			pn_clear_level_information_ui();
@@ -240,6 +268,8 @@ tabPreferences.AddContent(
 			var levelCarton = carton_create(), currentLevelBuffer = buffer_create(1, buffer_grow, 1);
 			
 			//Level information
+			buffer_write(currentLevelBuffer, buffer_string, global.levelName);
+			buffer_write(currentLevelBuffer, buffer_string, global.levelIcon);
 			for (var i = 0; i < 2; i++) buffer_write(currentLevelBuffer, buffer_string, global.levelMusic[i]);
 			buffer_write(currentLevelBuffer, buffer_string, global.skybox);
 			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_u8, global.skyboxColor[i]);
@@ -248,8 +278,10 @@ tabPreferences.AddContent(
 			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_s8, global.lightNormal[i]);
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightColor[i]);
 			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightAmbientColor[i]);
+			
 			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.events)); //Event amount
 			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.levelData)); //Room amount
+			
 			carton_add(levelCarton, "", currentLevelBuffer);
 			buffer_delete(currentLevelBuffer);
 			
@@ -259,7 +291,7 @@ tabPreferences.AddContent(
 				currentLevelBuffer = buffer_create(1, buffer_grow, 1);
 				
 				var event = global.events[? key], eventString = string(event[| 0]) + "|" + string(event[| 1]) + "|" + string(ds_list_size(event) - 2);
-				if (ds_list_size(event)) eventString += "|";
+				if (ds_list_size(event) - 2) eventString += "|";
 				for (var i = 2; i < ds_list_size(event); i++)
 				{
 					var action = event[| i];
@@ -270,7 +302,7 @@ tabPreferences.AddContent(
 						for (var j = 0; j < n; j++)
 						{
 							var arg = action[j];
-							if (is_string(arg)) eventString += "¤";
+							if (is_string(arg)) eventString += "s:";
 							eventString += string(arg);
 							if (j < n - 1) eventString += "|";
 						}
@@ -280,13 +312,13 @@ tabPreferences.AddContent(
 				}
 				buffer_write(currentLevelBuffer, buffer_string, eventString);
 				
-				carton_add(levelCarton, key, currentLevelBuffer);
+				carton_add(levelCarton, string(key), currentLevelBuffer);
 				buffer_delete(currentLevelBuffer);
 			}
 			
 			//Rooms
 			
-			carton_save(levelCarton, getFile, true);
+			carton_save(levelCarton, getFile, false);
 			carton_destroy(levelCarton);
 		}
 	}),
@@ -428,7 +460,7 @@ global.eventUI.AddContent(
 global.clock.add_cycle_method(function ()
 {
 	var windowWidth = window_get_width(), windowHeight = window_get_height();
-	if (windowWidth != global.windowWidthPrevious || windowHeight != global.windowHeightPrevious)
+	if ((windowWidth != global.windowWidthPrevious || windowHeight != global.windowHeightPrevious) && windowWidth && windowHeight)
 	{
 		show_debug_message(string(windowWidth) + ", " + string(windowHeight));
 		camera_set_view_size(view_camera[0], windowWidth, windowHeight);

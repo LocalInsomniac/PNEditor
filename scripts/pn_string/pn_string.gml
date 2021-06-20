@@ -7,11 +7,11 @@ function string_parse(_string, _reals)
 	//  eg. string_parse("0|cat|1|dog", false)
 	//      returns an array [ "0", "cat", "1", "dog" ]
 	//	and
-	//		string_parse("0|¤cat|1|¤dog", true)
+	//		string_parse("0|s:cat|1|s:dog", true)
 	//		returns an array [ 0, "cat", 1, "dog ]
 	//
     //      str         elements, string
-	//		reals		whether or not to treat every item as a real unless specified as a string using the "¤" prefix, boolean
+	//		reals		whether or not to treat every item as a real unless specified as a string using the "s:" prefix, boolean
 	//
     /// GMLscripts.com/license
 	if (_reals)
@@ -19,7 +19,7 @@ function string_parse(_string, _reals)
 		var array = string_parse(_string, false), i = 0;
 		repeat (array_length(array))
 		{
-			array[i] = string_copy(array[i], 1, 1) == "¤" ? string_copy(array[i], 2, string_length(array[i]) - 1) : real(array[i]);
+			array[i] = string_copy(array[i], 1, 2) == "s:" ? string_copy(array[i], 3, string_length(array[i]) - 2) : real(array[i]);
 			i++;
 		}
 	}
