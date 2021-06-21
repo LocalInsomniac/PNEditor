@@ -158,6 +158,9 @@ tabEvents.AddContent([
 		{
 			pn_reset_current_event_list();
 			global.eventEditor = true;
+			var event = global.events[? global.levelEvent];
+			global.eventUI._contents[| 2].value = event[| 0];
+			global.eventUI._contents[| 3].value = event[| 1];
 		}
 		else pn_show_message("Edit Selected Event...: Select an event first!");
 	}),
@@ -196,7 +199,7 @@ tabPreferences.AddContent(
 		{
 			pn_clear_level_information();
 			
-			var levelCarton = carton_load(getFile, false), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
+			var levelCarton = carton_load(getFile, true), currentLevelBuffer = carton_get_buffer(levelCarton, 0);
 			
 			//Level information
 			global.levelName = buffer_read(currentLevelBuffer, buffer_string);
@@ -212,37 +215,38 @@ tabPreferences.AddContent(
 			
 			var events = buffer_read(currentLevelBuffer, buffer_u16), rooms = buffer_read(currentLevelBuffer, buffer_u16);
 			
+			buffer_delete(currentLevelBuffer);
+			
 			//Events
 			show_debug_message(string(events) + " events found");
 			for (var i = 1, n = events + 1; i < n; i++)
 			{
-				var loadEvent = ds_list_create(), eventData, j = 3;
+				var loadEvent = ds_list_create(), j = 3;
 				
 				currentLevelBuffer = carton_get_buffer(levelCarton, i);
-				eventData = string_parse(buffer_read(currentLevelBuffer, buffer_string), true);
-				buffer_delete(currentLevelBuffer);
 				
-				ds_list_add(loadEvent, eventData[0], eventData[1]); //Trigger on start, persistent
-				
-				repeat (eventData[2])
+				ds_list_add(loadEvent, buffer_read(currentLevelBuffer, buffer_u8));
+				ds_list_add(loadEvent, buffer_read(currentLevelBuffer, buffer_u8));
+				repeat (buffer_read(currentLevelBuffer, buffer_u16))
 				{
-					var eventAction, eventArgs = eventData[j];
-					j++;
-					if (eventData[j] == 1) eventAction = eventData[j]; //Action has no arguments, therefore a real
-					else //Action has 1+ argument(s), therefore an array
+					var actionData = string_parse(buffer_read(currentLevelBuffer, buffer_string), true), eventAction, actionArgs = array_length(actionData), j = 0;
+					if (actionArgs == 1) eventAction = actionData[0]; //Action has no arguments, therefore a string
+					else
 					{
 						eventAction = [];
-						repeat (eventArgs)
+						repeat (actionArgs)
 						{
-							eventAction[@ array_length(eventAction)] = eventData[j];
+							eventAction[@ array_length(eventAction)] = actionData[j];
 							j++;
 						}
 					}
 					ds_list_add(loadEvent, eventAction);
 				}
 				
+				buffer_delete(currentLevelBuffer);
+				
 				var eventID = carton_get_metadata(levelCarton, i);
-				show_debug_message(string(i) + "/" + string(n) + ", ID " + eventID + ", " + string(eventData[2]) + " actions");
+				show_debug_message(string(i) + "/" + string(n) + ", ID " + eventID + ", " + string(ds_list_size(loadEvent)) + " actions");
 				ds_map_add_list(global.events, real(eventID), loadEvent);
 			}
 			pn_reset_events_list();
@@ -290,27 +294,27 @@ tabPreferences.AddContent(
 			{
 				currentLevelBuffer = buffer_create(1, buffer_grow, 1);
 				
-				var event = global.events[? key], eventString = string(event[| 0]) + "|" + string(event[| 1]) + "|" + string(ds_list_size(event) - 2);
-				if (ds_list_size(event) - 2) eventString += "|";
+				var event = global.events[? key];
+				
+				buffer_write(currentLevelBuffer, buffer_u8, event[| 0]);
+				buffer_write(currentLevelBuffer, buffer_u8, event[| 1]);
+				buffer_write(currentLevelBuffer, buffer_u16, ds_list_size(event) - 2);
+				
 				for (var i = 2; i < ds_list_size(event); i++)
 				{
-					var action = event[| i];
-					if (is_array(action))
+					var action = event[| i], n = array_length(action), eventString = is_array(action) ? "" : string(action);
+					if (n > 1)
 					{
-						var n = array_length(action);
-						eventString += string(n) + "|";
-						for (var j = 0; j < n; j++)
+						var j = 0;
+						repeat (n)
 						{
-							var arg = action[j];
-							if (is_string(arg)) eventString += "s:";
-							eventString += string(arg);
-							if (j < n - 1) eventString += "|";
+							eventString += is_string(action[j]) ? "s:" + action[j] : string(action[j]);
+							j++;
+							if (j != n) eventString += "|";
 						}
 					}
-					else eventString += string(action);
-					if (i < ds_list_size(event) - 1) eventString += "|";
+					buffer_write(currentLevelBuffer, buffer_string, eventString);
 				}
-				buffer_write(currentLevelBuffer, buffer_string, eventString);
 				
 				carton_add(levelCarton, string(key), currentLevelBuffer);
 				buffer_delete(currentLevelBuffer);
@@ -318,7 +322,7 @@ tabPreferences.AddContent(
 			
 			//Rooms
 			
-			carton_save(levelCarton, getFile, false);
+			carton_save(levelCarton, getFile, true);
 			carton_destroy(levelCarton);
 		}
 	}),
@@ -388,11 +392,11 @@ editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 global.ui = new EmuCore(0, 0, 512, 720);
 global.ui.AddContent([tabs, editor]);
 
-global.eventUIList = new EmuList(8, EMU_AUTO, 496, 24, "Actions: ", 32, 8, function ()
+global.eventUIList = new EmuList(8, EMU_AUTO, 496, 24, "Actions: ", 32, 16, function ()
 {
 	var selection = GetSelection();
-	if (selection > -1 && mouse_check_button_pressed(mb_right)) pn_event_edit_action(selection + 2);
-	global.eventSelected = selection;
+	if (selection > -1 && keyboard_check(vk_control)) pn_event_edit_action(selection + 2);
+	global.eventSelected = selection + 2;
 });
 global.eventUIList.SetList(global.levelEventList);
 
@@ -400,12 +404,24 @@ global.eventUI = new EmuCore(0, 0, 512, 720);
 global.eventUI.AddContent(
 [
 	global.eventUIList,
-	new EmuText(8, EMU_AUTO, 496, 24, "Right click an action to edit it."),
+	new EmuText(8, EMU_AUTO, 496, 24, "Hold Control while clicking an action to edit it."),
+	new EmuCheckbox(8, EMU_AUTO, 496, 24, "Trigger on Level Start", false, function() { global.events[? global.levelEvent][| 0] = value; }),
+	new EmuCheckbox(8, EMU_AUTO, 496, 24, "Persistent", false, function() { global.events[? global.levelEvent][| 1] = value; }),
 	new EmuButton(8, EMU_AUTO, 244, 24, "Move Up", function ()
 	{
+		var event = global.events[? global.levelEvent], action = event[| global.eventSelected];
+		ds_list_delete(event, global.eventSelected);
+		global.eventSelected = max(2, global.eventSelected - 1);
+		ds_list_insert(event, global.eventSelected, action);
+		pn_reset_current_event_list();
 	}),
 	new EmuButton(258, EMU_AUTO, 244, 24, "Move Down", function ()
 	{
+		var event = global.events[? global.levelEvent], action = event[| global.eventSelected];
+		ds_list_delete(event, global.eventSelected);
+		global.eventSelected = min(ds_list_size(event), global.eventSelected + 1);
+		ds_list_insert(event, global.eventSelected, action);
+		pn_reset_current_event_list();
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Add Action...", function ()
 	{
@@ -450,7 +466,7 @@ global.eventUI.AddContent(
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Action...", function ()
 	{
-		if (global.eventSelected > -1) ds_list_delete(global.events[? global.levelEvent], global.eventSelected + 2);
+		if (global.eventSelected > -1) ds_list_delete(global.events[? global.levelEvent], global.eventSelected);
 		pn_reset_current_event_list();
 	}),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Done", function () { global.eventEditor = false; }),
