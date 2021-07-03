@@ -46,3 +46,4 @@ MISCELLANEOUS
 
 10 - Message "_"
 11 - Lock/Unlock player
+25 - Objection/Take that/Hold it! (No voice/Phoenix Wright)

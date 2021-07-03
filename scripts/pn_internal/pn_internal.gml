@@ -117,7 +117,8 @@ enum eEventAction
 	setCameraRoll,
 	setCameraFOV,
 	setCameraTarget,
-	lerpCamera
+	lerpCamera,
+	exclamation
 }
 
 function pn_reset_events_list()
@@ -190,9 +191,10 @@ function pn_reset_current_event_list()
 			case (eEventAction.setCameraFOV): label = "22: Set camera FOV to " + string(eventAction[1]) + " degrees"; break
 			case (eEventAction.setCameraTarget): label = "23: Set camera target to actor" + string(eventAction[1]); break
 			case (eEventAction.lerpCamera):
-				label = "24: Lerp camera from previous position " + (eventAction[2] ? "smoothly" : "linearly") + 
-						" in " + string(eventAction[3]) + 
+				label = "24: Lerp camera from previous position " + (eventAction[1] ? "smoothly" : "linearly") + 
+						" in " + string(eventAction[2]) + 
 						"tick(s)"; break
+			case (eEventAction.exclamation): label = "24: " + (eventAction[1] == 2 ? "Hold it!" : (eventAction[1] == 1 ? "Take that!" : "Objection!")) + "(" + (eventAction[2] ? "Phoenix Wright" : "No voice") + ")"; break
 		}
 		else switch (eventAction)
 		{
@@ -263,6 +265,10 @@ function pn_event_edit_action(_pos)
 		case (eEventAction.lerpCamera):
 			_action[1] = pn_show_question("24 - Lock camera towards position: Turn smoothly?");
 			_action[2] = pn_get_integer("24 - Lock camera towards position: Ticks?", _action[2]);
+		break
+		case (eEventAction.exclamation):
+			_action[1] = pn_get_integer("25 - Exclamation: Exclamation type?\n0 = Objection!\n1 = Take that!\n2 = Hold it!", _action[1]);
+			_action[2] = pn_get_integer("25 - Exclamation: Voice?\n0 = No voice\n1 = Phoenix Wright", _action[2]);
 		break
 	}
 	global.events[? global.levelEvent][| _pos] = _action;

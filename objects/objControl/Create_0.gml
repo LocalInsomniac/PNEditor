@@ -106,8 +106,8 @@ tabLevelInformation.AddContent([
 		var color = real(value);
 		global.skyboxColor = [color_get_red(color) / 255, color_get_green(color) / 255, color_get_blue(color) / 255, color];
 	}),
-	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Start Distance", string(global.fogDistance[0]), "", 10, E_InputTypes.INT, function () { global.fogDistance[0] = real(value); }),
-	new EmuInput(8, EMU_AUTO, 496, 24, "Fog End Distance", string(global.fogDistance[1]), "", 10, E_InputTypes.INT, function () { global.fogDistance[1] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Start Distance", string(global.fogDistance[0]), "", 10, E_InputTypes.REAL, function () { global.fogDistance[0] = real(value); }),
+	new EmuInput(8, EMU_AUTO, 496, 24, "Fog End Distance", string(global.fogDistance[1]), "", 10, E_InputTypes.REAL, function () { global.fogDistance[1] = real(value); }),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Fog Color", string(make_color_rgb(global.fogColor[0] * 255, global.fogColor[1] * 255, global.fogColor[2] * 255)), "(BGR integer, 0 - 16777215)", 10, E_InputTypes.INT, function ()
 	{
 		var color = real(value);
@@ -131,8 +131,8 @@ tabLevelInformation.AddContent([
 	new EmuInput(8, EMU_AUTO, 496, 24, "Light Ambient Alpha", string(global.lightAmbientColor[3]), "(0.0 - 1.0)", 16, E_InputTypes.REAL, function () { global.lightAmbientColor[3] = real(value); })
 ]);
 tabLevelInformation._contents[| 7].SetRealNumberBounds(0, 16777215); //Skybox Color
-tabLevelInformation._contents[| 8].SetRealNumberBounds(0, 4294967295); //Fog Start Distance
-tabLevelInformation._contents[| 9].SetRealNumberBounds(0, 4294967295); //Fog End Distance
+tabLevelInformation._contents[| 8].SetRealNumberBounds(0, 2147483647); //Fog Start Distance
+tabLevelInformation._contents[| 9].SetRealNumberBounds(0, 2147483647); //Fog End Distance
 tabLevelInformation._contents[| 10].SetRealNumberBounds(0, 16777215); //Fog Color
 tabLevelInformation._contents[| 11].SetRealNumberBounds(0, 1); //Fog Alpha
 tabLevelInformation._contents[| 12].SetRealNumberBounds(-1, 1); //Light Normal X
@@ -206,12 +206,12 @@ tabPreferences.AddContent(
 			global.levelIcon = buffer_read(currentLevelBuffer, buffer_string);
 			for (var i = 0; i < 2; i++) global.levelMusic[i] = buffer_read(currentLevelBuffer, buffer_string);
 			global.skybox = buffer_read(currentLevelBuffer, buffer_string);
-			for (var i = 0; i < 3; i++) global.skyboxColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
-			for (var i = 0; i < 2; i++) global.fogDistance[i] = buffer_read(currentLevelBuffer, buffer_u32);
-			for (var i = 0; i < 4; i++) global.fogColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
-			for (var i = 0; i < 3; i++) global.lightNormal[i] = buffer_read(currentLevelBuffer, buffer_s8);
-			for (var i = 0; i < 4; i++) global.lightColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
-			for (var i = 0; i < 4; i++) global.lightAmbientColor[i] = buffer_read(currentLevelBuffer, buffer_u8);
+			for (var i = 0; i < 3; i++) global.skyboxColor[i] = buffer_read(currentLevelBuffer, buffer_f32);
+			for (var i = 0; i < 2; i++) global.fogDistance[i] = buffer_read(currentLevelBuffer, buffer_f32);
+			for (var i = 0; i < 4; i++) global.fogColor[i] = buffer_read(currentLevelBuffer, buffer_f32);
+			for (var i = 0; i < 3; i++) global.lightNormal[i] = buffer_read(currentLevelBuffer, buffer_f32);
+			for (var i = 0; i < 4; i++) global.lightColor[i] = buffer_read(currentLevelBuffer, buffer_f32);
+			for (var i = 0; i < 4; i++) global.lightAmbientColor[i] = buffer_read(currentLevelBuffer, buffer_f32);
 			
 			var events = buffer_read(currentLevelBuffer, buffer_u16), rooms = buffer_read(currentLevelBuffer, buffer_u16);
 			
@@ -276,12 +276,12 @@ tabPreferences.AddContent(
 			buffer_write(currentLevelBuffer, buffer_string, global.levelIcon);
 			for (var i = 0; i < 2; i++) buffer_write(currentLevelBuffer, buffer_string, global.levelMusic[i]);
 			buffer_write(currentLevelBuffer, buffer_string, global.skybox);
-			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_u8, global.skyboxColor[i]);
-			for (var i = 0; i < 2; i++) buffer_write(currentLevelBuffer, buffer_u32, global.fogDistance[i]);
-			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.fogColor[i]);
-			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_s8, global.lightNormal[i]);
-			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightColor[i]);
-			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_u8, global.lightAmbientColor[i]);
+			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_f32, global.skyboxColor[i]);
+			for (var i = 0; i < 2; i++) buffer_write(currentLevelBuffer, buffer_f32, global.fogDistance[i]);
+			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_f32, global.fogColor[i]);
+			for (var i = 0; i < 3; i++) buffer_write(currentLevelBuffer, buffer_f32, global.lightNormal[i]);
+			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_f32, global.lightColor[i]);
+			for (var i = 0; i < 4; i++) buffer_write(currentLevelBuffer, buffer_f32, global.lightAmbientColor[i]);
 			
 			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.events)); //Event amount
 			buffer_write(currentLevelBuffer, buffer_u16, ds_map_size(global.levelData)); //Room amount
@@ -453,7 +453,8 @@ global.eventUI.AddContent(
 			case (eEventAction._message): addAction = [getAction, ""]; break
 			
 			case (eEventAction.lockCameraToActor): 
-			case (eEventAction.lerpCamera): addAction = [getAction, 0, 0]; break
+			case (eEventAction.lerpCamera):
+			case (eEventAction.exclamation): addAction = [getAction, 0, 0]; break
 			
 			case (eEventAction.lockCameraToPosition): addAction = [getAction, global.cameraMouseX, global.cameraMouseY, global.cameraZ, 0]; break
 			
