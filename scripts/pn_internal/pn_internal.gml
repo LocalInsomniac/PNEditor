@@ -275,6 +275,14 @@ function pn_event_edit_action(_pos)
 	pn_reset_current_event_list();
 }
 
+function pn_reset_rooms_list()
+{
+	ds_list_clear(global.levelDataList);
+	for (var key = ds_map_find_first(global.levelData); !is_undefined(key); key = ds_map_find_next(global.levelData, key)) ds_list_add(global.levelDataList, key);
+}
+
+function pn_reset_current_room_list() {}
+
 function pn_list()
 {
 	var list = ds_list_create(), i = 0;

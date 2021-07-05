@@ -44,9 +44,12 @@ global.cameraY = 0;
 global.cameraZ = 0;
 global.cameraYaw = 0;
 global.cameraPitch = 0;
-global.camera3D = false;
+global.camera3D = true;
+global.camera3DControl = false;
 global.cameraMouseX = 0;
 global.cameraMouseY = 0;
+global.camera3DMouseX = 0;
+global.camera3DMouseY = 0;
 global.zoom = 1;
 
 global.cursorX = 0;
@@ -187,9 +190,47 @@ tabEvents.AddContent([
 ]);
 
 tabRooms = new EmuTab("Rooms");
+global.tabRoomsList = new EmuList(8, EMU_AUTO, 492, 24, "Rooms:", 32, 8, function ()
+{
+	var selection = GetSelection();
+	if (selection > -1) global.levelRoom = global.levelDataList[| selection];
+});
+global.tabRoomsList.SetList(global.levelDataList);
+tabRooms.AddContent(
+[
+	global.tabRoomsList,
+	new EmuButton(8, EMU_AUTO, 496, 24, "Edit Selected Room...", function ()
+	{
+		if (!ds_map_empty(global.levelData) && ds_map_exists(global.levelData, global.levelRoom))
+		{
+			pn_reset_current_room_list();
+			global.roomEditor = true;
+			var _room = global.levelData[? global.levelRoom];
+		}
+		else pn_show_message("Edit Selected Room...: Select a room first!");
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Add Room...", function ()
+	{
+		var getID = pn_get_integer("Add Room...: Room ID:", global.levelEvent);
+		if (ds_map_exists(global.levelData, getID)) pn_show_message("Add Room...: Room " + string(getID) + " already exists!");
+		else
+		{
+			ds_map_add(global.levelData, getID, undefined);
+			pn_reset_rooms_list();
+			global.levelRoom = getID;
+		}
+	}),
+	new EmuButton(8, EMU_AUTO, 496, 24, "Delete Selected Room", function ()
+	{
+		var selection = global.tabRoomsList.GetSelection();
+		if (selection > -1) ds_map_delete(global.levelData, global.levelDataList[| selection]);
+		pn_reset_rooms_list();
+		global.levelRoom = global.tabRoomsList.GetSelection();
+	})
+]);
 
-tabPreferences = new EmuTab("Preferences");
-tabPreferences.AddContent(
+global.tabPreferences = new EmuTab("Preferences");
+global.tabPreferences.AddContent(
 [
 	new EmuText(0, 0, 512, 48, "PN Editor 1.0\nby Can't Sleep"),
 	new EmuButton(8, 52, 496, 24, "Open...", function ()
@@ -337,21 +378,28 @@ tabPreferences.AddContent(
 	new EmuCheckbox(8, 136, 496, 24, "3D Mode", global.camera3D, function () { global.camera3D = value; }),
 	new EmuInput(8, 164, 496, 24, "Grid Size", string(global.gridSize), "", 10, E_InputTypes.REAL, function () { global.gridSize = real(value); })
 ]);
-tabPreferences._contents[| 5].SetRealNumberBounds(1, 4294967295); //Grid Size
+global.tabPreferences._contents[| 5].SetRealNumberBounds(1, 4294967295); //Grid Size
 
 tabs = new EmuTabGroup(0, 0, 512, 720, 2, 24);
-tabs.AddTabs(0, tabPreferences);
+tabs.AddTabs(0, global.tabPreferences);
 tabs.AddTabs(1, [tabLevelInformation, tabEvents, tabRooms]);
+
+global.cameraViewMatrix = [undefined, matrix_build_lookat(global.cameraX, global.cameraY, global.cameraZ, global.cameraX + dcos(global.cameraYaw), global.cameraY - dsin(global.cameraYaw), global.cameraZ + dtan(global.cameraPitch), 0, 0, 1)];
+global.cameraProjMatrix = [undefined, matrix_build_projection_perspective_fov(-45, -(window_get_width() - 512) / window_get_height(), 1, 65536)];
+
 
 editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 {
-	draw_set_color(global.skyboxColor[3]);
-	draw_rectangle(0, 0, global.windowWidthPrevious - 512, global.windowHeightPrevious, false);
+	draw_clear(global.skyboxColor[3]);
 	draw_set_color(c_white);
 	
-	matrix_set(matrix_world, matrix_build(-global.cameraX, -global.cameraY, 0, 0, 0, 0, global.zoom, global.zoom, global.zoom));
-	draw_text(64, 64, "TEST");
-	draw_text(256, 256, "TEST TEST TEST TEST TEST TEST TEST TEST TEST\n TEST TEST TEST TEST TEST\nTEST\nTEST");
+	camera_set_view_mat(view_camera[0], global.cameraViewMatrix[global.camera3D]);
+	camera_set_proj_mat(view_camera[0], global.cameraProjMatrix[global.camera3D]);
+	camera_apply(view_camera[0]);
+	
+	if !(global.camera3D) matrix_set(matrix_world, matrix_build(-global.cameraX, -global.cameraY, 0, 0, 0, 0, global.zoom, global.zoom, -global.zoom));
+	draw_text(0, 0, "TEST");
+	draw_text(0, 32, "TEST TEST TEST TEST TEST TEST TEST TEST TEST\n TEST TEST TEST TEST TEST\nTEST\nTEST");
 	draw_set_alpha(0.5);
 	draw_rectangle(global.cursorX - 2, global.cursorY - 2, global.cursorX + 2, global.cursorY + 2, false);
 	draw_set_alpha(1);
@@ -359,35 +407,88 @@ editor = new EmuRenderSurface(512, 0, 768, 720, function (mx, my)
 }, function (mx, my)
 {
 	//Editor area-specific controls
-	if !(point_in_rectangle(window_mouse_get_x(), window_mouse_get_y(), 0, 0, 512, global.windowHeightPrevious))
+	if (global.camera3DControl || !point_in_rectangle(window_mouse_get_x(), window_mouse_get_y(), 0, 0, 512, global.windowHeightPrevious))
 	{
-		//Move camera
-		if (mouse_check_button(mb_middle))
-	    {
-	        global.cameraX = global.cameraX + (global.cameraMouseX - mx) //* global.zoom;
-	        global.cameraY = global.cameraY + (global.cameraMouseY - my) //* global.zoom;
-	    }
+		if (global.camera3D)
+		{
+			if (mouse_check_button_pressed(mb_left) && !global.camera3DControl)
+			{
+				global.camera3DMouseX = display_mouse_get_x();
+				global.camera3DMouseY = display_mouse_get_y();
+				global.camera3DControl = true;
+			}
+			
+			global.cameraViewMatrix[1] = matrix_build_lookat(global.cameraX, global.cameraY, global.cameraZ, global.cameraX + dcos(global.cameraYaw), global.cameraY - dsin(global.cameraYaw), global.cameraZ + dtan(global.cameraPitch), 0, 0, 1);
+		}
+		else
+		{
+			//Move camera
+			if (mouse_check_button(mb_middle))
+		    {
+		        global.cameraX = global.cameraX + (global.cameraMouseX - mx) //* global.zoom;
+		        global.cameraY = global.cameraY + (global.cameraMouseY - my) //* global.zoom;
+		    }
 		
-		global.zoom = max(0.1, global.zoom + (mouse_wheel_up() - mouse_wheel_down()) * 0.1);
+			global.zoom = max(0.1, global.zoom + (mouse_wheel_up() - mouse_wheel_down()) * 0.1);
+		
+			//Move cursor
+			var cx = (global.cameraX + mx) / global.zoom, cy = (global.cameraY + my) / global.zoom;
+			global.cursorX = pn_snap_round(cx, global.gridSize);
+			global.cursorY = pn_snap_round(cy, global.gridSize);
+		}
+		
+		//Toggle 3D camera
+		if (keyboard_check_pressed(ord("Q")))
+		{
+			global.camera3D = !global.camera3D;
+			global.tabPreferences._contents[| 4].value = global.camera3D;
+		}
 		
 		//Reset camera
 		if (keyboard_check_pressed(ord("R")))
 		{
 			global.cameraX = 0;
 			global.cameraY = 0;
+			global.cameraZ = 0;
+			global.cameraYaw = 0;
+			global.cameraPitch = 0;
 			global.zoom = 1;
 		}
 		
-		//Move cursor
-		var cx = (global.cameraX + mx) / global.zoom, cy = (global.cameraY + my) / global.zoom;
-		global.cursorX = pn_snap_round(cx, global.gridSize);
-		global.cursorY = pn_snap_round(cy, global.gridSize);
+		//3D camera control
+		if (global.camera3DControl)
+		{
+			//Mouselook
+			global.cameraYaw -= (display_mouse_get_x() - global.camera3DMouseX) / 5;
+			global.cameraPitch = clamp(global.cameraPitch - ((display_mouse_get_y() - global.camera3DMouseY) / 5), -89.95, 89.95);
+			display_mouse_set(global.camera3DMouseX, global.camera3DMouseY);
+			
+			//Movement code by YAL
+		    var keyX = (keyboard_check(ord("W")) - keyboard_check(ord("S"))), keyY = keyboard_check(ord("D")) - keyboard_check(ord("A")), keyZ = keyboard_check(ord("Z")) - keyboard_check(ord("X")), keyL = point_distance(0, 0, keyX, keyY), speedX = keyX * 6, speedY = keyY * 6, speedZ = keyZ * 6, fastModifier = 1 + keyboard_check(vk_control); //length of moving vector
+		    if (keyL > 1) //If needed, normalize vector to prevent faster diagonal movement
+		    {
+		        keyX /= keyL;
+		        keyY /= keyL;
+		        keyL = 1;
+		    }
+		    global.cameraX += fastModifier * (lengthdir_x(lengthdir_x(speedX, global.cameraYaw), global.cameraPitch) + lengthdir_x(speedY, global.cameraYaw - 90));
+		    global.cameraY += fastModifier * (lengthdir_x(lengthdir_y(speedX, global.cameraYaw), global.cameraPitch) + lengthdir_y(speedY, global.cameraYaw - 90));
+		    global.cameraZ -= fastModifier * (lengthdir_y(speedX, global.cameraPitch) + speedZ);
+			
+			if (!global.camera3D || mouse_check_button_released(mb_left)) global.camera3DControl = false;
+		}
 	}
 	
 	//Update previous camera mouse position
 	global.cameraMouseX = mx;
 	global.cameraMouseY = my;
-}, function () {}, function () {});
+}, function ()
+{
+	global.cameraViewMatrix[0] = camera_get_view_mat(view_camera[0]);
+	global.cameraProjMatrix[0] = camera_get_proj_mat(view_camera[0]);
+	show_debug_message(string(global.cameraViewMatrix[0]) + ", " + string(global.cameraProjMatrix[0]));
+	cam_3d_enable();
+}, function () {});
 
 global.ui = new EmuCore(0, 0, 512, 720);
 global.ui.AddContent([tabs, editor]);
@@ -488,5 +589,6 @@ global.clock.add_cycle_method(function ()
 		editor.height = windowHeight;
 		global.windowWidthPrevious = windowWidth;
 		global.windowHeightPrevious = windowHeight;
+		global.cameraProjMatrix[1] = matrix_build_projection_perspective_fov(-45, -(windowWidth - 512) / windowHeight, 1, 65536);
 	}
 });
