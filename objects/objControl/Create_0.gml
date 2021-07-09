@@ -10,6 +10,12 @@ global.fonts = ds_map_create();
 global.sounds = ds_map_create();
 global.music = ds_map_create();
 
+ini_open("config.ini");
+global.dataDirectory = ini_read_string("config", "gameDirectory", "") + "/data";
+ini_close();
+
+if !(directory_exists(global.dataDirectory)) show_message("WARNING: The specified folder path does not have a Project Nightmare Engine data folder. Set a valid one in config.ini!");
+
 /*-----
 SYSTEMS
 -----*/
@@ -203,9 +209,9 @@ tabRooms.AddContent(
 	{
 		if (!ds_map_empty(global.levelData) && ds_map_exists(global.levelData, global.levelRoom))
 		{
-			pn_reset_current_room_list();
+			/*pn_reset_current_room_list();
 			global.roomEditor = true;
-			var _room = global.levelData[? global.levelRoom];
+			var _room = global.levelData[? global.levelRoom];*/
 		}
 		else pn_show_message("Edit Selected Room...: Select a room first!");
 	}),

@@ -33,14 +33,14 @@ Frame cycles: 0 = linear
 			  2 = quadratic
 			  3 = quadratic, loop*/
 
-#macro mDirSprites "data/gfx/sprites/"
-
 enum eSpriteType {normal, rotate, billboard, billboardRotate}
 enum eModelType {_static, animated}
 
 function pn_sprite_queue(_name)
-{
+{	
 	if (ds_map_exists(global.sprites, _name)) exit
+	
+	var mDirSprites = global.dataDirectory + "/gfx/sprites/";
 	
 	var queueSprite, getSprite = file_find_first(mDirSprites + _name + ".*", 0);
 	if (getSprite == "")
@@ -214,11 +214,11 @@ A material can be a PNG, JPEG or GIF.
 -----materials.txt Format-----
 name|frames|speed|xScroll|yScroll|specular|crystal*/
 
-#macro mDirMaterials "data/gfx/materials/"
-
 function pn_material_queue(_name)
 {
 	if (ds_map_exists(global.materials, _name)) exit
+	
+	var mDirMaterials = global.dataDirectory + "/gfx/materials/";
 	
 	var queueMaterial, getMaterial = file_find_first(mDirMaterials + _name + ".*", 0);
 	if (getMaterial == "")
@@ -293,11 +293,11 @@ Refer to GML documentation on font_add and font_add_sprite for info on fonts.txt
 https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Fonts/font_add.htm
 https://manual.yoyogames.com/GameMaker_Language/GML_Reference/Asset_Management/Fonts/font_add_sprite.htm*/
 
-#macro mDirFonts "data/gfx/fonts/"
-
 function pn_font_queue(_name)
 {
 	if (ds_map_exists(global.fonts, _name)) exit
+	
+	var mDirFonts = global.dataDirectory + "/gfx/fonts/";
 	
 	var queueFont, getFont = file_find_first(mDirFonts + _name + ".*", 0);
 	if (getFont == "")
@@ -390,11 +390,11 @@ A sound must be an OGG.
 -----sounds.txt Format-----
 name|falloff*/
 
-#macro mDirSounds "data/sfx/sounds/"
-
 function pn_sound_load(_name)
 {
 	if (ds_map_exists(global.sounds, _name)) exit
+	
+	var mDirSounds = global.dataDirectory + "/sfx/sounds/";
 	
 	var loadSound, getSound = file_find_first(mDirSounds + _name + ".ogg", 0);
 	if (getSound == "")
@@ -440,11 +440,11 @@ Exclude the music track from music.txt in order for it to play only once.
 Start and end points must be in samples (seconds * sample rate).
 Set start point to -1 in order to loop from start to finish (end point can be left out)*/
 
-#macro mDirMusic "data/sfx/music/"
-
 function pn_music_load(_name)
 {
 	if (ds_map_exists(global.music, _name)) exit
+	
+	var mDirMusic = global.dataDirectory + "/sfx/music/";
 	
 	var loadMusic, getMusic = file_find_first(mDirMusic + _name + ".*", 0);
 	if (getMusic == "")
