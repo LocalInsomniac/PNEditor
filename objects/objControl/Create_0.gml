@@ -78,8 +78,8 @@ tabLevelInformation.AddContent([
 	new EmuInput(8, EMU_AUTO, 496, 24, "Music", global.levelMusic[0], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[0] = value; }),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Play/Stop Music", function()
 	{
-		FMODGMS_Chan_StopChannel(global.channel);
-		if !(ds_map_exists(global.music, global.levelMusic[0]))
+		if (FMODGMS_Chan_Get_Position(global.channel) > 0) FMODGMS_Chan_StopChannel(global.channel);
+		else
 		{
 			repeat (ds_map_size(global.music))
 			{
@@ -88,15 +88,15 @@ tabLevelInformation.AddContent([
 				ds_map_delete(global.music, track);
 			}
 			pn_music_load(global.levelMusic[0]);
-			if !(ds_map_exists(global.music, global.levelMusic[0])) pn_show_message("Play/Stop Music: Unknown track '" + global.levelMusic[0] + "'!");
+			if !(ds_map_exists(global.music, global.levelMusic[0])) pn_show_message("Play/Stop Music: Unknown track '" + global.levelMusic[1] + "'!");
 			else FMODGMS_Snd_PlaySound(global.music[? global.levelMusic[0]], global.channel);
 		}
 	}),
 	new EmuInput(8, EMU_AUTO, 496, 24, "Battle Music", global.levelMusic[1], "(music track name)", 1000, E_InputTypes.STRING, function () { global.levelMusic[1] = value; }),
 	new EmuButton(8, EMU_AUTO, 496, 24, "Play/Stop Battle Music", function()
 	{
-		FMODGMS_Chan_StopChannel(global.channel);
-		if !(ds_map_exists(global.music, global.levelMusic[1]))
+		if (FMODGMS_Chan_Get_Position(global.channel) > 0) FMODGMS_Chan_StopChannel(global.channel);
+		else
 		{
 			repeat (ds_map_size(global.music))
 			{

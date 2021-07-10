@@ -483,21 +483,7 @@ function pn_music_load(_name)
 				ds_map_add(global.music, _name, loadMusic);
 				show_debug_message("PNMusic: Added " + _name + " (" + string(loadMusic) + ")");
 				
-				//Look in music.txt for music data
-				
-				dataTable = file_text_open_read(mDirMusic + "music.txt");
-				while !(file_text_eof(dataTable))
-				{
-					var data = string_parse(file_text_read_string(dataTable), false);
-					if (data[0] == _name)
-					{
-						var _start = real(data[1]);
-						FMODGMS_Snd_Set_LoopPoints(loadMusic, _start == -1 ? 0 : _start, _start == -1 ? FMODGMS_Snd_Get_Length(loadMusic) : real(data[2]));
-						break
-					}
-					file_text_readln(dataTable);
-				}
-				file_text_close(dataTable);
+				//Look in music.txt for music data (NOT NEEDED IN PN EDITOR)
 			break
 			
 			default:
